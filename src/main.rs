@@ -92,5 +92,5 @@ Available subcommands:
 
 Available options:
 
-  --output -o    With build, specify the output binary file.
+  -o <FILENAME>  With build, specify the output binary file.
 ";

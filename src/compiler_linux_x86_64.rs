@@ -1,5 +1,5 @@
 use std::{
-    fs::File,
+    fs::{self, remove_file, File},
     io::Write,
     process::{Command, Stdio},
 };
@@ -52,32 +52,59 @@ fn compile(bf: &[u8]) -> String {
 pub fn compiler(program: &[u8], out_file: &str, execute: bool) {
     let prog = compile(program);
 
-    File::create(out_file.to_owned() + ".asm")
-        .unwrap()
-        .write_all(prog.as_bytes())
-        .unwrap();
+    let mut f = File::create(out_file.to_owned() + ".asm.tmp").unwrap();
+    f.write_all(prog.as_bytes()).unwrap();
+    f.flush().unwrap();
+    drop(f);
 
     Command::new("nasm")
         .args([
             "-felf64",
-            &(out_file.to_owned() + ".asm"),
+            &(out_file.to_owned() + ".asm.tmp"),
             "-o",
-            &(out_file.to_owned() + ".o"),
+            &(out_file.to_owned() + ".o.tmp"),
         ])
         .spawn()
+        .unwrap()
+        .wait()
         .unwrap();
     Command::new("ld")
-        .args([&(out_file.to_owned() + ".o"), "-o", out_file])
+        .args([&(out_file.to_owned() + ".o.tmp"), "-o", out_file])
         .spawn()
+        .unwrap()
+        .wait()
         .unwrap();
 
+    remove_file(out_file.to_owned() + ".asm.tmp").unwrap();
+    remove_file(out_file.to_owned() + ".o.tmp").unwrap();
+
     if execute {
-        let mut child = Command::new(out_file)
+        while let Err(_) = set_executable(out_file) {}
+
+        enable_raw_mode().unwrap();
+
+        Command::new(out_file)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .stdin(Stdio::inherit())
             .spawn()
+            .unwrap()
+            .wait()
             .unwrap();
-        child.wait().unwrap();
+
+        disable_raw_mode().unwrap();
     }
+}
+
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
+
+fn set_executable(path: &str) -> std::io::Result<()> {
+    let metadata = fs::metadata(path)?;
+    let mut permissions = metadata.permissions();
+    permissions.set_mode(0o755); // rwxr-xr-x
+    fs::set_permissions(path, permissions)?;
+    Ok(())
 }
