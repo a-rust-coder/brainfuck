@@ -30,7 +30,8 @@
           mkShell {
             buildInputs = [
               (rust-bin.selectLatestNightlyWith (toolchain: toolchain.default))
-            ];
+            	nasm
+						];
 
             shellHook = "nu";
           };
