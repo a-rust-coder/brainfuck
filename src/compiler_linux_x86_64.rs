@@ -4,7 +4,7 @@ use std::{
     process::{Command, Stdio},
 };
 
-fn compile_bf_to_asm(bf: &[u8]) -> String {
+fn compile(bf: &[u8]) -> String {
     let mut asm = String::new();
     let mut loop_stack = Vec::new();
     let mut loop_counter = 0;
@@ -50,7 +50,7 @@ fn compile_bf_to_asm(bf: &[u8]) -> String {
 }
 
 pub fn compiler(program: &[u8], out_file: &str, execute: bool) {
-    let prog = compile_bf_to_asm(program);
+    let prog = compile(program);
 
     File::create(out_file.to_owned() + ".asm")
         .unwrap()
@@ -72,7 +72,7 @@ pub fn compiler(program: &[u8], out_file: &str, execute: bool) {
         .unwrap();
 
     if execute {
-        let mut child = Command::new("./".to_owned() + out_file)
+        let mut child = Command::new(out_file)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .stdin(Stdio::inherit())
